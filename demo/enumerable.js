@@ -20,7 +20,10 @@
 
         return a;
     };
-    var wrap = function (o) {
+    var wrap = function(o) {
+        if (typeof o == 'undefined') 
+            return [];
+
         if (supportsIteration(o))
             return o;
 
@@ -215,9 +218,9 @@
                 return d;
             });
         },
-        dump: function (block) {
-            block(this.toArray());
+        inspect: function(block) {
+            block(this);
             return this;
-        }
+        }       
     };
 })();
