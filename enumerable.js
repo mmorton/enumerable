@@ -1,3 +1,9 @@
+/*!
+ * enumerable-js v.10 
+ * Copyright 2010, Michael Morton 
+ * 
+ * MIT Licensed - See LICENSE.txt
+ */
 (function () {
     var supportsIteration = function (o) {
         return typeof o.current === 'function' &&
