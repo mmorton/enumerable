@@ -1,5 +1,5 @@
 /*!
- * enumerable-js v.10 
+ * enumerable-js v1.0
  * Copyright 2010, Michael Morton 
  * 
  * MIT Licensed - See LICENSE.txt
