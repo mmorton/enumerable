@@ -1,48 +1,33 @@
 /*!
- * enumerable-js v1.0
- * Copyright 2010, Michael Morton 
- * 
+ * enumerable-js v2.0
+ * Copyright 2014, Michael Morton
+ *
  * MIT Licensed - See LICENSE.txt
  */
-(function () {
-    var supportsIteration = function (o) {
-        return typeof o.current === 'function' &&
-			   typeof o.next === 'function' &&
-			   typeof o.prev === 'function' &&
-			   typeof o.reset === 'function';
-    };
-    var mix = function (a, b, c) {
-        if (typeof c === 'undefined')
-        {
-            c = b;
-            b = a;
-            a = {};
-        }
+//noinspection ThisExpressionReferencesGlobalObjectJS
+(function (scope, empty) {
+    function iterable(value) {
+        return value && typeof value.current == 'function' && typeof value.reset == 'function' && typeof value.prev == 'function' && typeof value.next == 'function';
+    }
 
+    function mix(a, b) {
+        var o = {}, p;
+        a = a.prototype || a;
         b = b.prototype || b;
+        for (p in a) o[p] = a[p];
+        for (p in b) o[p] = b[p];
+        return o;
+    }
 
-        if (b) for (var n in b) a[n] = b[n];
-        if (c) for (var n in c) a[n] = c[n];
+    function wrap(value) {
+        if (iterable(value)) return value;
 
-        return a;
-    };
-    var wrap = function(o) {
-        if (typeof o == 'undefined') 
-            return [];
+        return new IndexIterator(value && (value.hasOwnProperty('length') ? value : [value]) || []);
+    }
 
-        if (supportsIteration(o))
-            return o;
-
-        // todo: fix, not correct
-        if (o.hasOwnProperty('length'))
-            return new ArrayIterator(o);
-
-        return new ArrayIterator([o]);
-    };
-
-    var Iterator = function (up) {
+    function Iterator(up) {
         this.up = up;
-    };
+    }
 
     Iterator.prototype = {
         current: function () { return this.up.current(); },
@@ -51,33 +36,25 @@
         reset: function (end) { return this.up.reset(end); }
     };
 
-    var ArrayIterator = function (items) {
-        this.items = items;
-        this.pos = -1;
+
+    function IndexIterator(value) {
+        this.value = value;
+        this.index = -1;
+    }
+
+    IndexIterator.prototype = {
+        current: function () { return this.value[this.index]; },
+        next: function () { return ++this.index < this.value.length; },
+        prev: function () { return --this.index > -1; },
+        reset: function (end) { return this.index = end ? this.value.length : -1, true; }
     };
 
-    ArrayIterator.prototype = {
-        current: function () {
-            return this.items[this.pos];
-        },
-        next: function () {
-            return ++this.pos < this.items.length;
-        },
-        prev: function () {
-            return --this.pos > -1;
-        },
-        reset: function (end) {
-            this.pos = end ? this.items.length : -1;
-            return true;
-        }
-    };
-
-    var PredicateIterator = function (up, predicate) {
+    function FilterIterator(up, predicate) {
         this.up = up;
         this.predicate = predicate;
-    };
+    }
 
-    PredicateIterator.prototype = mix(Iterator, {
+    FilterIterator.prototype = mix(Iterator, {
         next: function () {
             while (this.up.next())
                 if (this.predicate(this.up.current()))
@@ -92,24 +69,24 @@
         }
     });
 
-    var BlockIterator = function (up, block) {
+    function MapIterator(up, block) {
         this.up = up;
         this.block = block;
-    };
+    }
 
-    BlockIterator.prototype = mix(Iterator, {
+    MapIterator.prototype = mix(Iterator, {
         current: function () {
             return this.block(this.up.current());
         }
     });
 
-    var ExpandingIterator = function (up, block) {
+    function MapManyIterator(up, block) {
         this.up = up;
         this.block = block;
         this.expanded = false;
-    };
+    }
 
-    ExpandingIterator.prototype = mix(Iterator, {
+    MapManyIterator.prototype = mix(Iterator, {
         current: function () {
             return this.expanded.current();
         },
@@ -147,86 +124,122 @@
         }
     });
 
-    var ReverseIterator = function(up) {
+    function ReverseIterator(up) {
         this.up = up;
-    };
+    }
 
-    ReverseIterator.prototype = mix(Iterator, {        
+    ReverseIterator.prototype = mix(Iterator, {
         next: function () { return this.up.prev(); },
         prev: function () { return this.up.next(); },
         reset: function (end) { return this.up.reset(!end); }
     });
 
-    Enumerable = window.Enumerable = function (source) {
-        this.iterator = wrap(source);
-    };
+    function Enumerable(value) {
+        if (!(this instanceof Enumerable)) return new Enumerable(value);
+
+        this.iterator = wrap(value);
+    }
 
     Enumerable.prototype = {
         first: function (def) {
-            if (this.iterator.reset() && this.iterator.next())
-                return this.iterator.current();
-            else if (typeof def !== 'undefined')
-                return def;
+            if (this.iterator.reset() && this.iterator.next()) return this.iterator.current();
+            else return def;
         },
         last: function (def) {
-            if (this.iterator.reset(true) && this.iterator.prev())
-                return this.iterator.current();
-            else if (typeof def !== 'undefined')
-                return def;
+            if (this.iterator.reset(true) && this.iterator.prev()) return this.iterator.current();
+            else return def;
         },
-        where: function (predicate) {
-            this.iterator = new PredicateIterator(this.iterator, predicate);
+        filter: function (predicate) {
+            this.iterator = new FilterIterator(this.iterator, predicate);
             return this;
         },
-        select: function (block) {
-            this.iterator = new BlockIterator(this.iterator, block);
+        map: function (block) {
+            this.iterator = new MapIterator(this.iterator, block);
             return this;
         },
-        selectMany: function (block) {
-            this.iterator = new ExpandingIterator(this.iterator, block);
+        mapMany: function (block) {
+            this.iterator = new MapManyIterator(this.iterator, block);
             return this;
         },
         reverse: function() {
             this.iterator = new ReverseIterator(this.iterator);
             return this;
         },
-        aggregate: function (initial, block) {
-            var result = initial;
-
+        reduce: function (initial, block) {
             this.iterator.reset();
 
-            while (this.iterator.next())
-                result = block(result, this.iterator.current());
+            var value = initial;
 
-            return result;
+            while (this.iterator.next()) value = block(value, this.iterator.current());
+
+            return value;
         },
         each: function(block) {
             this.iterator.reset();
 
-            while (this.iterator.next())
-                block(this.iterator.current());
+            while (this.iterator.next()) block(this.iterator.current());
 
             return this;
         },
-        toArray: function () {
-            var result = [];
-
+        some: function(predicate) {
             this.iterator.reset();
 
-            while (this.iterator.next())
-                result.push(this.iterator.current());
+            predicate = predicate || function(item) { return !!item; };
 
-            return result;
+            var check = new FilterIterator(this.iterator, predicate);
+
+            return check.next();
+        },
+        none: function(predicate) {
+            this.iterator.reset();
+
+            predicate = predicate || function(item) { return !item; };
+
+            var check = new FilterIterator(this.iterator, predicate);
+
+            return !check.next();
+        },
+        every: function(predicate) {
+            this.iterator.reset();
+
+            while (this.iterator.next()) if (!predicate(this.iterator.current())) return false;
+
+            return true;
+        },
+        toArray: function () {
+            this.iterator.reset();
+
+            var value = [];
+
+            while (this.iterator.next()) value.push(this.iterator.current());
+
+            return value;
         },
         toDictionary: function (keySelector, valueSelector) {
-            return this.aggregate({}, function (d, o) {
+            return this.reduce({}, function (d, o) {
                 d[keySelector(o)] = valueSelector ? valueSelector(o) : o;
                 return d;
             });
         },
-        inspect: function(block) {
+        introspect: function(block) {
             block(this);
             return this;
-        }       
+        }
     };
-})();
+
+    //noinspection JSUnresolvedVariable
+    if (typeof module != 'undefined' && module.exports)
+    {
+        //noinspection JSUnresolvedVariable
+        module.exports = Enumerable;
+    }
+    else if (typeof define == 'function' && typeof define.amd == 'object')
+    {
+        //noinspection JSValidateTypes
+        define(function() { return Enumerable; });
+    }
+    else
+    {
+        scope.Enumerable = Enumerable;
+    }
+})(this);
