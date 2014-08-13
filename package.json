@@ -1,23 +1,23 @@
 {
-  "name": "enumerable",
-  "description": "A simple chained enumerable library for JavaScript.",
-  "author": "Michael Morton <mmorton@icanhascode.com>",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/mmorton/enumerable.git"
-  },
-  "main": "enumerable.js",
-  "version": "2.0.0",
-  "devDependencies": {
-    "qunitjs": "1.x.x"
-  },
-  "scripts": {
+    "name": "enumerable",
+    "description": "A simple chained enumerable library for JavaScript.",
+    "author": "Michael Morton <mmorton@icanhascode.com>",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/mmorton/enumerable.git"
+    },
+    "main": "enumerable.js",
+    "version": "2.0.0",
+    "devDependencies": {
+        "qunitjs": "1.x.x"
+    },
+    "scripts": {
 
-  },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "https://raw.github.com/mmorton/enumerable/master/LICENSE"
-    }
-  ]
+    },
+    "licenses": [
+        {
+            "type": "MIT",
+            "url": "https://raw.github.com/mmorton/enumerable/master/LICENSE"
+        }
+    ]
 }
