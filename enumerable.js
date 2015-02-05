@@ -5,7 +5,8 @@
  * MIT Licensed - See LICENSE.txt
  */
 (function (scope, empty) {
-    var DONE = Object.freeze({done:true});
+    var DONE = Object.freeze({done:true}),
+        __slice__ = Array.prototype.slice;
 
     var wrappers = [
         function(val) {
@@ -20,10 +21,10 @@
         var next = val && val.next;
         if (typeof next === 'function') {
             return val;
+        } else if (Array.isArray(val)) {
+            return array(val);
         } else {
-            var idx = 0, len = wrappers.length, iter;
-            while (idx < len) if ((iter = wrappers[idx++](val))) return iter;
-            return {next: function() { return DONE; }};
+            return array(__slice__.call(arguments, 0));
         }
     }
 
@@ -45,7 +46,7 @@
             idx = typeof start === 'number' ? start : 0;
 
         cnt = cnt > -1 ? cnt : len;
-        idx = idx < 0 ? len - idx - 1 : idx;
+        idx = idx < 0 ? len + idx : idx;
 
         return {
             next: function() {
@@ -209,9 +210,15 @@
         });
     }
 
-    Enumerable.prototype.toObject = function(keyFn, valFn) {
+    Enumerable.prototype.toObject = Enumerable.prototype.toDictionary = function(keyFn, valFn) {
         return this.reduce({}, function(obj, val) {
             return obj[keyFn(val)] = valFn ? valFn(val) : val, obj;
+        });
+    }
+
+    Enumerable.prototype.forEach = Enumerable.prototype.each = function(fn) {
+        return this.reduce(0, function(count, val) {
+            return fn(val), count + 1;
         });
     }
 
@@ -231,6 +238,11 @@
         var iter = filter(this.iter, fn || falsy),
             next = iter.next();
         return next.done;
+    }
+
+    Enumerable.prototype.with = Enumerable.prototype.introspect = function(fn) {
+        fn(this);
+        return this;
     }
 
     Enumerable.wrappers = wrappers;

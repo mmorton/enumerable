@@ -1,4 +1,4 @@
 enumerable
 ==========
 
-A simple enumerable library for JavaScript.
+A simple chained enumerable library for JavaScript.
