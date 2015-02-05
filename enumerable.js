@@ -19,16 +19,6 @@
         }
     }
 
-    function single(val) {
-        var next = 1;
-        return {
-            next: function() {
-                if (next--) return {value: val};
-                return DONE;
-            }
-        }
-    }
-
     function array(val, start, count, step) {
         var len = val.length, temp;
 
