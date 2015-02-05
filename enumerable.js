@@ -1,245 +1,245 @@
 /*!
- * enumerable-js v2.0
- * Copyright 2014, Michael Morton
+ * enumerable v3.0
+ * Copyright 2015, Michael Morton
  *
  * MIT Licensed - See LICENSE.txt
  */
-//noinspection ThisExpressionReferencesGlobalObjectJS
 (function (scope, empty) {
-    function iterable(value) {
-        return value && typeof value.current == 'function' && typeof value.reset == 'function' && typeof value.prev == 'function' && typeof value.next == 'function';
-    }
+    var DONE = Object.freeze({done:true});
 
-    function mix(a, b) {
-        var o = {}, p;
-        a = a.prototype || a;
-        b = b.prototype || b;
-        for (p in a) o[p] = a[p];
-        for (p in b) o[p] = b[p];
-        return o;
-    }
-
-    function wrap(value) {
-        if (iterable(value)) return value;
-
-        return new IndexIterator(value && (value.hasOwnProperty('length') ? value : [value]) || []);
-    }
-
-    function Iterator(up) {
-        this.up = up;
-    }
-
-    Iterator.prototype = {
-        current: function () { return this.up.current(); },
-        next: function () { return this.up.next(); },
-        prev: function () { return this.up.prev(); },
-        reset: function (end) { return this.up.reset(end); }
-    };
-
-
-    function IndexIterator(value) {
-        this.value = value;
-        this.index = -1;
-    }
-
-    IndexIterator.prototype = {
-        current: function () { return this.value[this.index]; },
-        next: function () { return ++this.index < this.value.length; },
-        prev: function () { return --this.index > -1; },
-        reset: function (end) { return this.index = end ? this.value.length : -1, true; }
-    };
-
-    function FilterIterator(up, predicate) {
-        this.up = up;
-        this.predicate = predicate;
-    }
-
-    FilterIterator.prototype = mix(Iterator, {
-        next: function () {
-            while (this.up.next())
-                if (this.predicate(this.up.current()))
-                    return true;
-            return false;
+    var wrappers = [
+        function(val) {
+            if (Array.isArray(val)) return array(val);
         },
-        prev: function () {
-            while (this.up.prev())
-                if (this.predicate(this.up.current()))
-                    return true;
-            return false;
+        function(val) {
+            return single(val);
         }
-    });
+    ];
 
-    function MapIterator(up, block) {
-        this.up = up;
-        this.block = block;
+    function wrap(val) {
+        var next = val && val.next;
+        if (typeof next === 'function') {
+            return val;
+        } else {
+            var idx = 0, len = wrappers.length, iter;
+            while (idx < len) if ((iter = wrappers[idx++](val))) return iter;
+            return {next: function() { return DONE; }};
+        }
     }
 
-    MapIterator.prototype = mix(Iterator, {
-        current: function () {
-            return this.block(this.up.current());
-        }
-    });
-
-    function MapManyIterator(up, block) {
-        this.up = up;
-        this.block = block;
-        this.expanded = false;
-    }
-
-    MapManyIterator.prototype = mix(Iterator, {
-        current: function () {
-            return this.expanded.current();
-        },
-        next: function () {
-            while (!this.expanded || !this.expanded.next())
-            {
-                if (!this.up.next())
-                    return false;
-
-                this.expanded = wrap(this.block(this.up.current()));
-
-                if (!this.expanded.reset())
-                    return false;
+    function single(val) {
+        var next = 1;
+        return {
+            next: function() {
+                if (next--) return {value: val};
+                return DONE;
             }
+        }
+    }
 
-            return true;
-        },
-        prev: function () {
-            while (!this.expanded || !this.expanded.prev())
-            {
-                if (!this.up.prev())
-                    return false;
+    function array(val, start, count, step) {
+        var len = val.length, temp;
 
-                this.expanded = wrap(this.block(this.up.current()));
+        var inc = typeof step === 'number' ? step : 1,
+            cnt = typeof count === 'number' ? count : -1,
+            idx = typeof start === 'number' ? start : 0;
 
-                if (!this.expanded.reset(true))
-                    return false;
+        cnt = cnt > -1 ? cnt : len;
+        idx = idx < 0 ? len - idx - 1 : idx;
+
+        return {
+            next: function() {
+                if (--cnt < 0 || idx < 0 || idx >= len) return DONE;
+                return temp = val[idx], idx += inc, {value: temp}
             }
-
-            return true;
-        },
-        reset: function (end) {
-            this.expanded = false;
-            return this.up.reset(end);
         }
-    });
-
-    function ReverseIterator(up) {
-        this.up = up;
     }
 
-    ReverseIterator.prototype = mix(Iterator, {
-        next: function () { return this.up.prev(); },
-        prev: function () { return this.up.next(); },
-        reset: function (end) { return this.up.reset(!end); }
-    });
-
-    function Enumerable(value) {
-        if (!(this instanceof Enumerable)) return new Enumerable(value);
-
-        this.iterator = wrap(value);
+    function filter(iter, fn) {
+        return {
+            next: function() {
+                var next = iter.next();
+                if (next.done) return DONE;
+                if (fn(next.value)) return next;
+                return DONE;
+            }
+        }
     }
 
-    Enumerable.prototype = {
-        first: function (def) {
-            if (this.iterator.reset() && this.iterator.next()) return this.iterator.current();
-            else return def;
-        },
-        last: function (def) {
-            if (this.iterator.reset(true) && this.iterator.prev()) return this.iterator.current();
-            else return def;
-        },
-        filter: function (predicate) {
-            this.iterator = new FilterIterator(this.iterator, predicate);
-            return this;
-        },
-        map: function (block) {
-            this.iterator = new MapIterator(this.iterator, block);
-            return this;
-        },
-        mapMany: function (block) {
-            this.iterator = new MapManyIterator(this.iterator, block);
-            return this;
-        },
-        reverse: function() {
-            this.iterator = new ReverseIterator(this.iterator);
-            return this;
-        },
-        reduce: function (initial, block) {
-            this.iterator.reset();
-
-            var value = initial;
-
-            while (this.iterator.next()) value = block(value, this.iterator.current());
-
-            return value;
-        },
-        each: function(block) {
-            this.iterator.reset();
-
-            while (this.iterator.next()) block(this.iterator.current());
-
-            return this;
-        },
-        some: function(predicate) {
-            this.iterator.reset();
-
-            predicate = predicate || function(item) { return !!item; };
-
-            var check = new FilterIterator(this.iterator, predicate);
-
-            return check.next();
-        },
-        none: function(predicate) {
-            this.iterator.reset();
-
-            predicate = predicate || function(item) { return !item; };
-
-            var check = new FilterIterator(this.iterator, predicate);
-
-            return !check.next();
-        },
-        every: function(predicate) {
-            this.iterator.reset();
-
-            while (this.iterator.next()) if (!predicate(this.iterator.current())) return false;
-
-            return true;
-        },
-        toArray: function () {
-            this.iterator.reset();
-
-            var value = [];
-
-            while (this.iterator.next()) value.push(this.iterator.current());
-
-            return value;
-        },
-        toDictionary: function (keySelector, valueSelector) {
-            return this.reduce({}, function (d, o) {
-                d[keySelector(o)] = valueSelector ? valueSelector(o) : o;
-                return d;
-            });
-        },
-        introspect: function(block) {
-            block(this);
-            return this;
+    function take(iter, countOrFn) {
+        var count = 0;
+        return {
+            next: typeof countOrFn === 'function' ? function() {
+                var next = iter.next();
+                if (next.done) return DONE;
+                if (countOrFn(next.value)) return next;
+                return DONE;
+            } : function() {
+                var next = iter.next();
+                if (next.done) return DONE;
+                if (count++ < countOrFn) return next;
+                return DONE;
+            }
         }
-    };
+    }
 
-    //noinspection JSUnresolvedVariable
-    if (typeof module != 'undefined' && module.exports)
-    {
-        //noinspection JSUnresolvedVariable
+    function skip(iter, countOrFn) {
+        var count = 0;
+        return {
+            next: typeof countOrFn === 'function' ? function() {
+                var next;
+                if (count <= 0) while (!(count++, next = iter.next()).done && countOrFn(next.value));
+                if (next.done) return DONE;
+                return next;
+            } : function() {
+                var next;
+                if (count <= 0) while (!(count++, next = iter.next()).done && count < countOrFn);
+                if (next.done) return DONE;
+                return next;
+            }
+        }
+    }
+
+    function peek(iter, fn) {
+        return map(iter, function(val) {
+            fn(val);
+            return val;
+        })
+    }
+
+    function map(iter, fn) {
+        return {
+            next: function() {
+                var next = iter.next();
+                if (next.done) return DONE;
+                return {value: fn(next.value)};
+            }
+        }
+    }
+
+    function mapMany(iter, fn) {
+        var exp, temp, next;
+        return {
+            next: function() {
+                while (!exp || (next = exp.next()).done) {
+                    temp = iter.next();
+                    if (temp.done) return DONE;
+                    exp = wrap(temp.value);
+                }
+                if (next.done) return DONE;
+                return {value: fn(next.value)};
+            }
+        }
+    }
+
+    function reduce(iter, val, fn) {
+        var next, out = val;
+        while (!(next = iter.next()).done) {
+            out = fn(out, next.value);
+        }
+        return out;
+    }
+
+    function reverse(iter) {
+        var exp;
+        return {
+            next: function() {
+                if (!exp) exp = array(reduce(iter, [], function(arr, val) {
+                    return arr.push(val), arr;
+                }), -1, -1, -1);
+                return exp.next();
+            }
+        }
+    }
+
+    function truthy(val) {
+        return !!val;
+    }
+
+    function falsy(val) {
+        return !val;
+    }
+
+    function Enumerable(val) {
+        if (!(this instanceof Enumerable)) return new Enumerable(val);
+
+        this.iter = wrap(val);
+    }
+
+    Enumerable.prototype.filter = function(fn) {
+        return this.iter = filter(this.iter, fn), this;
+    }
+
+    Enumerable.prototype.map = function(fn) {
+        return this.iter = map(this.iter, fn), this;
+    }
+
+    Enumerable.prototype.mapMany = function(fn) {
+        return this.iter = mapMany(this.iter, fn), this;
+    }
+
+    Enumerable.prototype.peek = function(fn) {
+        return this.iter = peek(this.iter, fn), this;
+    }
+
+    Enumerable.prototype.reverse = function() {
+        return this.iter = reverse(this.iter), this;
+    }
+
+    Enumerable.prototype.first = function(def) {
+        var next = this.iter.next();
+        if (next.done) return def instanceof Enumerable ? def.first() : def;
+        return next.value;
+    }
+
+    Enumerable.prototype.last = function(def) {
+        var iter = this.iter, last, next;
+        while (!(last = next, next = iter.next()).done);
+        if (last) return last.value;
+        return def instanceof Enumerable ? def.last() : def;
+    }
+
+    Enumerable.prototype.reduce = function(val, fn) {
+        return reduce(this.iter, val, fn);
+    }
+
+    Enumerable.prototype.toArray = function() {
+        return this.reduce([], function(arr, val) {
+            return arr.push(val), arr;
+        });
+    }
+
+    Enumerable.prototype.toObject = function(keyFn, valFn) {
+        return this.reduce({}, function(obj, val) {
+            return obj[keyFn(val)] = valFn ? valFn(val) : val, obj;
+        });
+    }
+
+    Enumerable.prototype.some = function(fn) {
+        var iter = filter(this.iter, fn || truthy),
+            next = iter.next();
+        return !next.done;
+    }
+
+    Enumerable.prototype.every = function(fn) {
+        var iter = this.iter, next, check = fn || truthy;
+        while (!(next = iter.next()).done) if (!check(next.value)) return false;
+        return true;
+    }
+
+    Enumerable.prototype.none = function(fn) {
+        var iter = filter(this.iter, fn || falsy),
+            next = iter.next();
+        return next.done;
+    }
+
+    Enumerable.wrappers = wrappers;
+
+    if (typeof module != 'undefined' && module.exports) {
         module.exports = Enumerable;
-    }
-    else if (typeof define == 'function' && typeof define.amd == 'object')
-    {
-        //noinspection JSValidateTypes
+    } else if (typeof define == 'function' && typeof define.amd == 'object') {
         define(function() { return Enumerable; });
-    }
-    else
-    {
+    } else {
         scope.Enumerable = Enumerable;
     }
 })(this);

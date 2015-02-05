@@ -36,12 +36,12 @@
   });
 
   QUnit.test('map', function(assert) {
-      var value = Enumerable([1,2,3,4,5]).map(function(v) { return v * 2; });
+      var value = Enumerable([1,2,3,4,5]).map(function(v) { return v * 2; }).toArray();
       assert.deepEqual(value, [2,4,6,8,10], 'v * 2');
   });
 
   QUnit.test('mapMany', function(assert) {
-      var value = Enumerable([1,[2,3],[4,5]]).map(function(v) { return v; });
+      var value = Enumerable([1,[2,3],[4,5]]).map(function(v) { return v; }).toArray();
       assert.deepEqual(value, [1,2,3,4,5], 'flat');
   });
 
@@ -51,7 +51,7 @@
   });
 
   QUnit.test('toDictionary (key)', function(assert) {
-      var value = Enumerable([1,2,3,4,5]).toDictionary(function(v) { return 'key' + v; });
+      var value = Enumerable([1,2,3,4,5]).toObject(function(v) { return 'key' + v; });
       assert.deepEqual(value, {'key1':1,'key2':2,'key3':3,'key4':4,'key5':5}, 'key map');
   });
 
@@ -71,7 +71,7 @@
   });
 
   QUnit.test('reverse', function(assert) {
-      var value = Enumerable([1,2,3,4,5]).toArray();
+      var value = Enumerable([1,2,3,4,5]).reverse().toArray();
       assert.deepEqual(value, [5,4,3,2,1], 'reversed');
   });
 
