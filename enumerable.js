@@ -8,15 +8,6 @@
     var DONE = Object.freeze({done:true}),
         __slice__ = Array.prototype.slice;
 
-    var wrappers = [
-        function(val) {
-            if (Array.isArray(val)) return array(val);
-        },
-        function(val) {
-            return single(val);
-        }
-    ];
-
     function wrap(val) {
         var next = val && val.next;
         if (typeof next === 'function') {
@@ -89,12 +80,20 @@
         return {
             next: typeof countOrFn === 'function' ? function() {
                 var next;
-                if (count <= 0) while (!(count++, next = iter.next()).done && countOrFn(next.value));
+                if (count <= 0) {
+                    while (!(count++, next = iter.next()).done && countOrFn(next.value));
+                } else {
+                    next = iter.next();
+                }
                 if (next.done) return DONE;
                 return next;
             } : function() {
                 var next;
-                if (count <= 0) while (!(count++, next = iter.next()).done && count < countOrFn);
+                if (count <= 0) {
+                    while (!(count++, next = iter.next()).done && count <= countOrFn);
+                } else {
+                    next = iter.next();
+                }
                 if (next.done) return DONE;
                 return next;
             }
@@ -187,6 +186,14 @@
         return this.iter = reverse(this.iter), this;
     }
 
+    Enumerable.prototype.take = function(countOrFn) {
+        return this.iter = take(this.iter, countOrFn), this;
+    }
+
+    Enumerable.prototype.skip = function(countOrFn) {
+        return this.iter = skip(this.iter, countOrFn), this;
+    }
+
     Enumerable.prototype.first = function(def) {
         var next = this.iter.next();
         if (next.done) return def instanceof Enumerable ? def.first() : def;
@@ -244,8 +251,6 @@
         fn(this);
         return this;
     }
-
-    Enumerable.wrappers = wrappers;
 
     if (typeof module != 'undefined' && module.exports) {
         module.exports = Enumerable;

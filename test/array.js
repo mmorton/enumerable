@@ -37,6 +37,26 @@ describe('enumerable using array', function() {
           assert.equal(value, false, 'no items are > 5');
     });
 
+    it('take (fn)', function() {
+          var value = enumerable([1,2,3,4,5]).take(function(v) { return v < 3;  }).toArray();
+          assert.deepEqual(value, [1,2], 'under 3')
+    });
+
+    it('take (count)', function() {
+          var value = enumerable([1,2,3,4,5]).take(3).toArray();
+          assert.deepEqual(value, [1,2,3], '3')
+    });
+
+    it('skip (fn)', function() {
+        var value = enumerable([1,2,3,4,5]).skip(function(v) { return v < 3;  }).toArray();
+        assert.deepEqual(value, [3,4,5], '3 and over')
+    })
+
+    it('skip (count)', function() {
+          var value = enumerable([1,2,3,4,5]).skip(4).toArray();
+          assert.deepEqual(value, [5], '5')
+    });
+
     it('map', function() {
           var value = enumerable([1,2,3,4,5]).map(function(v) { return v * 2; }).toArray();
           assert.deepEqual(value, [2,4,6,8,10], 'v * 2');
