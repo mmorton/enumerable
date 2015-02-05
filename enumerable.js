@@ -40,10 +40,10 @@
     function filter(iter, fn) {
         return {
             next: function() {
-                var next = iter.next();
+                var next;
+                while (!(next = iter.next()).done && !fn(next.value));
                 if (next.done) return DONE;
-                if (fn(next.value)) return next;
-                return DONE;
+                return next;
             }
         }
     }

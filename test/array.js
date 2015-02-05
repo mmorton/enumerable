@@ -83,8 +83,8 @@ describe('enumerable using array', function() {
     });
 
     it('filter (some)', function() {
-          var value = enumerable([1,2,3,4,5]).filter(function(v) { return v < 5; }).toArray();
-          assert.deepEqual(value, [1,2,3,4], 'some items are < 5');
+          var value = enumerable([1,2,3,4,5]).filter(function(v) { return v > 1 && v < 5; }).toArray();          
+          assert.deepEqual(value, [2,3,4], 'some items are > 1 && < 5');
     });
 
     it('filter (none)', function() {
