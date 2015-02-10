@@ -7,10 +7,30 @@ describe('enumerable using array', function() {
         assert.equal(value, 1, 'first item should be 1');
     });
 
-    it('last', function() {
-          var value = enumerable([1,2,3,4,5]).last();
-          assert.equal(value, 5, 'last item should be 5');
+    it ('first (fn)', function() {
+        var value = enumerable([1,2,3,4,5]).first(function(v) { return v > 1; });
+        assert.equal(value, 2, 'first > 1');
     });
+
+    it ('first (enum)', function() {
+        var value = enumerable([]).first(enumerable([1,2,3,4,5]));
+        assert.equal(value, 1, 'first of secondary should be 1')
+    });
+
+    it('last', function() {
+        var value = enumerable([1,2,3,4,5]).last();
+        assert.equal(value, 5, 'last item should be 5');
+    });
+
+    it('last (fn)', function() {
+        var value = enumerable([1,2,3,4,5]).last(function(v) { return v < 5; });
+        assert.equal(value, 4, 'last < 5');
+    })
+
+    it('last (enum)', function() {
+        var value = enumerable([]).last(enumerable([1,2,3,4,5]));
+        assert.equal(value, 5, 'last of secondary should be 5');
+    })
 
     it('every (all)', function() {
           var value = enumerable([1,2,3,4,5]).every(function(v) { return v <= 5; });
@@ -83,7 +103,7 @@ describe('enumerable using array', function() {
     });
 
     it('filter (some)', function() {
-          var value = enumerable([1,2,3,4,5]).filter(function(v) { return v > 1 && v < 5; }).toArray();          
+          var value = enumerable([1,2,3,4,5]).filter(function(v) { return v > 1 && v < 5; }).toArray();
           assert.deepEqual(value, [2,3,4], 'some items are > 1 && < 5');
     });
 

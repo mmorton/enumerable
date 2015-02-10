@@ -32,7 +32,7 @@
         return {
             next: function() {
                 if (--cnt < 0 || idx < 0 || idx >= len) return DONE;
-                return temp = val[idx], idx += inc, {value: temp}
+                return temp = val[idx], idx += inc, {value: temp};
             }
         }
     }
@@ -158,89 +158,99 @@
 
     Enumerable.prototype.filter = function(fn) {
         return this.iter = filter(this.iter, fn), this;
-    }
+    };
 
     Enumerable.prototype.map = function(fn) {
         return this.iter = map(this.iter, fn), this;
-    }
+    };
 
     Enumerable.prototype.mapMany = function(fn) {
         return this.iter = mapMany(this.iter, fn), this;
-    }
+    };
 
     Enumerable.prototype.peek = function(fn) {
         return this.iter = peek(this.iter, fn), this;
-    }
+    };
 
     Enumerable.prototype.reverse = function() {
         return this.iter = reverse(this.iter), this;
-    }
+    };
 
     Enumerable.prototype.take = function(countOrFn) {
         return this.iter = take(this.iter, countOrFn), this;
-    }
+    };
 
     Enumerable.prototype.skip = function(countOrFn) {
         return this.iter = skip(this.iter, countOrFn), this;
-    }
+    };
 
     Enumerable.prototype.first = function(def) {
-        var next = this.iter.next();
-        if (next.done) return def instanceof Enumerable ? def.first() : def;
-        return next.value;
-    }
+        if (typeof def === 'function') {
+            return this.filter(def).first(arguments[1]);
+        } else {
+            var next = this.iter.next();
+            if (next.done) return def instanceof Enumerable ? def.first() : def;
+            return next.value;
+        }
+    };
 
     Enumerable.prototype.last = function(def) {
-        var iter = this.iter, last, next;
-        while (!(last = next, next = iter.next()).done);
-        if (last) return last.value;
-        return def instanceof Enumerable ? def.last() : def;
-    }
+        if (typeof def === 'function') {
+            return this.filter(def).last(arguments[1]);
+        } else {
+            var iter = this.iter, last, next;
+            while (!(last = next, next = iter.next()).done);
+            if (last) return last.value;
+            return def instanceof Enumerable ? def.last() : def;
+        }
+    };
 
     Enumerable.prototype.reduce = function(val, fn) {
         return reduce(this.iter, val, fn);
-    }
+    };
 
     Enumerable.prototype.toArray = function() {
         return this.reduce([], function(arr, val) {
             return arr.push(val), arr;
         });
-    }
+    };
 
     Enumerable.prototype.toObject = Enumerable.prototype.toDictionary = function(keyFn, valFn) {
         return this.reduce({}, function(obj, val) {
             return obj[keyFn(val)] = valFn ? valFn(val) : val, obj;
         });
-    }
+    };
 
     Enumerable.prototype.forEach = Enumerable.prototype.each = function(fn) {
         return this.reduce(0, function(count, val) {
             return fn(val), count + 1;
         });
-    }
+    };
 
     Enumerable.prototype.some = function(fn) {
         var iter = filter(this.iter, fn || truthy),
             next = iter.next();
         return !next.done;
-    }
+    };
 
     Enumerable.prototype.every = function(fn) {
         var iter = this.iter, next, check = fn || truthy;
         while (!(next = iter.next()).done) if (!check(next.value)) return false;
         return true;
-    }
+    };
 
     Enumerable.prototype.none = function(fn) {
         var iter = filter(this.iter, fn || falsy),
             next = iter.next();
         return next.done;
-    }
+    };
 
     Enumerable.prototype.with = Enumerable.prototype.introspect = function(fn) {
         fn(this);
         return this;
-    }
+    };
+
+    Enumerable.fromArray = array;
 
     if (typeof module != 'undefined' && module.exports) {
         module.exports = Enumerable;
